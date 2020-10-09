@@ -1,0 +1,101 @@
+version: '3'
+services:
+
+  #PHP Service
+  app:
+    build:
+      context: .
+    container_name: binary-tree
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: binary_tree
+      SERVICE_TAGS: dev
+      DB_HOST: binary_tree_db
+      DB_DATABASE: binary_tree_db
+      DB_USERNAME: app_user
+      DB_PASSWORD: app_pass
+      TEST_DB_HOST: test_binary_tree_db
+      TEST_DB_DATABASE: test_binary_tree_db
+      TEST_DB_USERNAME: test_app_user
+      TEST_DB_PASSWORD: test_app_pass
+    working_dir: /var/www
+    volumes:
+       - .:/var/www
+       - ./docker-config/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - binary_tree_network
+
+  #Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: binary_tree_webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8383:80"
+    volumes:
+      - .:/var/www
+      - ./docker-config/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - binary_tree_network
+
+  #Mariadb Service
+  db:
+    image: mariadb
+    container_name: binary_tree_db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3309:3306"
+    environment:
+      MYSQL_DATABASE: binary_tree_db
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_pass
+      MYSQL_ROOT_PASSWORD: app_root_pass
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - binary_tree_dbdata:/var/lib/mysql
+      - ./docker-config/mysql/my.cnf:/etc/mysql
+    networks:
+      - binary_tree_network
+
+  db_test:
+      image: mariadb
+      container_name: test_binary_tree_db
+      restart: unless-stopped
+      tty: true
+      ports:
+        - "3311:3306"
+      environment:
+        MYSQL_DATABASE: test_binary_tree_db
+        MYSQL_USER: test_app_user
+        MYSQL_PASSWORD: test_app_pass
+        MYSQL_ROOT_PASSWORD: test_app_root_pass
+        SERVICE_TAGS: dev
+        SERVICE_NAME: test_mysql
+      volumes:
+        - test_binary_tree_dbdata:/var/lib/mysql
+        - ./docker-config/mysql/my.cnf:/etc/mysql
+      networks:
+        - binary_tree_network
+
+  redis:
+    image: redis
+    restart: unless-stopped
+    command: redis-server
+    ports:
+      - "6379:6379"
+
+#Docker Networks
+networks:
+  binary_tree_network:
+    driver: bridge
+
+#Volumes
+volumes:
+  binary_tree_dbdata:
+    driver: local
+  test_binary_tree_dbdata:
+    driver: local
